@@ -1,0 +1,71 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- Aspire Hosting -->
+    <PackageVersion Include="Aspire.Hosting" Version="13.0.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.0.0" />
+    
+    <!-- Azure Storage -->
+    <PackageVersion Include="Azure.Data.Tables" Version="12.9.1" />
+    
+    <!-- ASP.NET Core -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" />
+    
+    <!-- Swagger/OpenAPI -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    
+    <!-- MediatR for CQRS -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    
+    <!-- FluentValidation -->
+    <PackageVersion Include="FluentValidation" Version="11.10.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
+    <PackageVersion Include="Blazored.FluentValidation" Version="2.2.0" />
+    
+    <!-- Logging -->
+    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageVersion Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
+    
+    <!-- OpenTelemetry -->
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.9.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
+    
+    <!-- Radzen Blazor Components -->
+    <PackageVersion Include="Radzen.Blazor" Version="5.6.8" />
+    
+    <!-- Testing - xUnit -->
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    
+    <!-- Testing - Assertions & Mocking -->
+    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    
+    <!-- Testing - bUnit -->
+    <PackageVersion Include="bunit" Version="1.32.7" />
+    
+    <!-- ASP.NET Core Identity & OAuth -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    
+    <!-- Blazor LocalStorage for offline -->
+    <PackageVersion Include="Blazored.LocalStorage" Version="4.5.0" />
+    
+    <!-- Application Insights -->
+    <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+    
+    <!-- Rate Limiting -->
+    <PackageVersion Include="System.Threading.RateLimiting" Version="9.0.0" />
+  </ItemGroup>
+</Project>

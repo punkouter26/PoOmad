@@ -1,0 +1,121 @@
+@inject Services.ApiClient ApiClient
+
+<div class="streak-counter">
+    @if (_isLoading)
+    {
+        <div class="streak-loading">Loading streak...</div>
+    }
+    else
+    {
+        <div class="streak-icon">🔥</div>
+        <div class="streak-content">
+            <div class="streak-number">@_currentStreak</div>
+            <div class="streak-label">Day@(_currentStreak != 1 ? "s" : "") Streak</div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnStreakLoaded { get; set; }
+
+    private int _currentStreak;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStreak();
+    }
+
+    public async Task RefreshStreak()
+    {
+        await LoadStreak();
+        StateHasChanged();
+    }
+
+    private async Task LoadStreak()
+    {
+        _isLoading = true;
+
+        try
+        {
+            _currentStreak = await ApiClient.GetStreakAsync();
+            await OnStreakLoaded.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading streak: {ex.Message}");
+            _currentStreak = 0;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+
+<style>
+    .streak-counter {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        margin-bottom: 2rem;
+        max-width: 400px;
+    }
+
+    .streak-icon {
+        font-size: 3rem;
+        animation: flicker 2s infinite;
+    }
+
+    @@keyframes flicker {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    .streak-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .streak-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1;
+    }
+
+    .streak-label {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin-top: 0.25rem;
+    }
+
+    .streak-loading {
+        color: #fff;
+        font-size: 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .streak-counter {
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .streak-icon {
+            font-size: 2rem;
+        }
+
+        .streak-number {
+            font-size: 2rem;
+        }
+
+        .streak-label {
+            font-size: 0.875rem;
+        }
+    }
+</style>

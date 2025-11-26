@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PoOmad.Api\PoOmad.Api\PoOmad.Api.csproj" />
+    <ProjectReference Include="..\..\PoOmad.Client\PoOmad.Client\PoOmad.Client.csproj" />
+  </ItemGroup>
+
+</Project>

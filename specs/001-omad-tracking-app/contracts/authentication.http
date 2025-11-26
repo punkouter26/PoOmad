@@ -1,0 +1,46 @@
+### Authentication Endpoints (BFF Pattern)
+### Google OAuth with HTTP-only cookie session
+
+@baseUrl = https://localhost:7001
+@apiBaseUrl = {{baseUrl}}/api
+
+###
+# 1. Initiate Google OAuth Login
+# User is redirected to Google consent screen
+GET {{apiBaseUrl}}/auth/google
+# Returns: 302 Redirect to Google OAuth
+
+###
+# 2. OAuth Callback (handled by API, not called directly)
+# After Google authentication, Google redirects to this endpoint
+# GET {{apiBaseUrl}}/auth/google/callback?code={authorization_code}&state={csrf_token}
+# Returns: 302 Redirect to /dashboard with Set-Cookie header (HTTP-only)
+
+###
+# 3. Check Authentication Status
+GET {{apiBaseUrl}}/auth/me
+Cookie: .AspNetCore.Identity.Application={session_cookie}
+# Returns: 200 OK
+# {
+#   "userId": "google-oauth2|123456789",
+#   "email": "user@gmail.com",
+#   "isAuthenticated": true
+# }
+
+###
+# 4. Sign Out
+POST {{apiBaseUrl}}/auth/signout
+Cookie: .AspNetCore.Identity.Application={session_cookie}
+# Returns: 200 OK (clears cookie)
+
+###
+# 5. Health Check (includes auth status)
+GET {{apiBaseUrl}}/health
+# Returns: 200 OK
+# {
+#   "status": "Healthy",
+#   "checks": {
+#     "tableStorage": "Healthy",
+#     "authentication": "Healthy"
+#   }
+# }

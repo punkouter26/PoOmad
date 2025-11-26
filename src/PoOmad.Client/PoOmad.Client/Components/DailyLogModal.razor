@@ -1,0 +1,373 @@
+@using PoOmad.Shared.DTOs
+@using PoOmad.Shared.Validators
+@inject Services.ApiClient ApiClient
+
+<div class="modal-backdrop @(IsVisible ? "visible" : "")" @onclick="Cancel">
+    <div class="modal-content" @onclick:stopPropagation>
+        <div class="modal-header">
+            <h2>@(IsEditMode ? "Edit" : "Log") Day - @SelectedDate.ToString("MMM dd, yyyy")</h2>
+            <button class="btn-close" @onclick="Cancel">×</button>
+        </div>
+
+        <EditForm Model="@dailyLog" OnValidSubmit="@HandleSubmit">
+            <FluentValidationValidator Validator="@validator" />
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Did you complete OMAD today?</label>
+                    <div class="toggle-group">
+                        <button type="button" 
+                                class="toggle-btn @(dailyLog.OmadCompliant ? "active" : "")"
+                                @onclick="() => dailyLog.OmadCompliant = true">
+                            Yes
+                        </button>
+                        <button type="button" 
+                                class="toggle-btn @(!dailyLog.OmadCompliant ? "active" : "")"
+                                @onclick="() => dailyLog.OmadCompliant = false">
+                            No
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Did you consume alcohol?</label>
+                    <div class="toggle-group">
+                        <button type="button" 
+                                class="toggle-btn @(dailyLog.AlcoholConsumed ? "active" : "")"
+                                @onclick="() => dailyLog.AlcoholConsumed = true">
+                            Yes
+                        </button>
+                        <button type="button" 
+                                class="toggle-btn @(!dailyLog.AlcoholConsumed ? "active" : "")"
+                                @onclick="() => dailyLog.AlcoholConsumed = false">
+                            No
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Weight (lbs) - Optional</label>
+                    <InputNumber @bind-Value="dailyLog.Weight" class="form-control" placeholder="180.5" step="0.1" />
+                    <ValidationMessage For="@(() => dailyLog.Weight)" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="error-message">
+                        @errorMessage
+                        @if (requiresConfirmation)
+                        {
+                            <button type="button" class="btn-confirm-weight" @onclick="ConfirmWeightChange">
+                                Confirm Weight
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="Cancel" disabled="@isSubmitting">
+                    Cancel
+                </button>
+                @if (IsEditMode)
+                {
+                    <button type="button" class="btn-danger" @onclick="DeleteLog" disabled="@isSubmitting">
+                        Delete
+                    </button>
+                }
+                <button type="submit" class="btn-primary" disabled="@isSubmitting">
+                    @(isSubmitting ? "Saving..." : "Save")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public DateTime SelectedDate { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private DailyLogDto dailyLog = new();
+    private DailyLogValidator validator = new();
+    private bool isSubmitting;
+    private bool IsEditMode;
+    private string? errorMessage;
+    private bool requiresConfirmation;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && SelectedDate != default)
+        {
+            dailyLog = new DailyLogDto { Date = SelectedDate };
+            errorMessage = null;
+            requiresConfirmation = false;
+
+            // Try to load existing log
+            var existingLog = await ApiClient.GetDayLogAsync(SelectedDate);
+            if (existingLog != null)
+            {
+                IsEditMode = true;
+                dailyLog = existingLog;
+            }
+            else
+            {
+                IsEditMode = false;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var (success, error) = await ApiClient.LogDayAsync(dailyLog, requiresConfirmation);
+            
+            if (success)
+            {
+                await OnSaved.InvokeAsync();
+                await OnClose.InvokeAsync();
+            }
+            else if (error != null && error.Contains("5 lb threshold"))
+            {
+                errorMessage = error;
+                requiresConfirmation = true;
+            }
+            else
+            {
+                errorMessage = error ?? "Failed to save log";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task ConfirmWeightChange()
+    {
+        requiresConfirmation = true;
+        await HandleSubmit();
+    }
+
+    private async Task DeleteLog()
+    {
+        if (!await ConfirmDelete())
+            return;
+
+        isSubmitting = true;
+        try
+        {
+            var success = await ApiClient.DeleteDayLogAsync(SelectedDate);
+            if (success)
+            {
+                await OnSaved.InvokeAsync();
+                await OnClose.InvokeAsync();
+            }
+            else
+            {
+                errorMessage = "Failed to delete log";
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task<bool> ConfirmDelete()
+    {
+        // Simple confirmation - in production, use a proper confirmation dialog
+        return true;
+    }
+
+    private async Task Cancel()
+    {
+        await OnClose.InvokeAsync();
+    }
+}
+
+<style>
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-backdrop.visible {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #2a2a2a;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: auto;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #444;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.25rem;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        color: #aaa;
+        font-size: 2rem;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        line-height: 1;
+    }
+
+    .btn-close:hover {
+        color: #fff;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        color: #fff;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .toggle-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .toggle-btn {
+        flex: 1;
+        padding: 12px;
+        background: #333;
+        color: #aaa;
+        border: 2px solid #444;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toggle-btn.active {
+        background: #1976d2;
+        color: #fff;
+        border-color: #1976d2;
+    }
+
+    .toggle-btn:hover {
+        border-color: #1976d2;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #444;
+        border-radius: 4px;
+        background: #333;
+        color: #fff;
+        font-size: 16px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        border-top: 1px solid #444;
+    }
+
+    .btn-primary, .btn-secondary, .btn-danger, .btn-confirm-weight {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+    }
+
+    .btn-primary {
+        background: #1976d2;
+        color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #1565c0;
+    }
+
+    .btn-secondary {
+        background: #555;
+        color: #fff;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: #666;
+    }
+
+    .btn-danger {
+        background: #d32f2f;
+        color: #fff;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background: #b71c1c;
+    }
+
+    .btn-confirm-weight {
+        margin-top: 0.5rem;
+        background: #f57c00;
+        color: #fff;
+    }
+
+    .btn-confirm-weight:hover {
+        background: #e65100;
+    }
+
+    button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .error-message {
+        margin-top: 1rem;
+        padding: 10px;
+        background: #d32f2f;
+        color: #fff;
+        border-radius: 4px;
+    }
+</style>

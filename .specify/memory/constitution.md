@@ -1,50 +1,160 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT - Constitution Update
+─────────────────────────────────────────
+Version Change: NEW → 1.0.0
+Constitution Type: INITIAL RATIFICATION
+Date: 2025-11-22
+
+Principles Defined (5):
+  ✓ I. Foundation & Naming Standards
+  ✓ II. Architecture & Code Organization
+  ✓ III. Implementation Standards
+  ✓ IV. Quality & Testing Discipline (NON-NEGOTIABLE)
+  ✓ V. Operations & Azure DevOps
+
+Additional Sections:
+  ✓ Development Environment Requirements
+  ✓ Governance
+
+Template Consistency Validation:
+  ✓ plan-template.md - Constitution Check section present
+  ✓ spec-template.md - Requirements align with architectural constraints
+  ✓ tasks-template.md - Test-first workflow compatible with TDD principle
+
+Follow-up Actions:
+  [ ] TODO(PROJECT_NAME): Confirm .sln file name to replace "PoOmad" placeholder
+  [ ] Validate global.json specifies .NET 10.0.xxx SDK version
+  [ ] Ensure Directory.Packages.props exists at repository root
+  [ ] Verify all .csproj files have <Nullable>enable</Nullable>
+
+Last Sync: 2025-11-22
+─────────────────────────────────────────
+-->
+
+# PoOmad Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Foundation & Naming Standards
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Solution Naming MUST be Consistent**: The `.sln` file name (e.g., `PoOmad.sln`) is the canonical identifier. This exact name MUST be used for all Azure services, resource groups (e.g., `PoOmad-rg`), App Service names (e.g., `PoOmad-app`), and the user-facing HTML `<title>` tag.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**.NET Version MUST be .NET 10**: All projects MUST target `.NET 10`. A `global.json` file MUST exist at the repository root and lock the SDK to a `10.0.xxx` version. Use the latest C# language features supported by .NET 10.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Package Management MUST be Centralized**: All NuGet packages MUST be managed centrally in a `Directory.Packages.props` file at the repository root. Individual `.csproj` files MUST NOT specify package versions.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+**Null Safety MUST be Enabled**: Nullable Reference Types (`<Nullable>enable</Nullable>`) MUST be enabled in all `.csproj` files to enforce compile-time null safety.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Consistent naming eliminates ambiguity across environments. Centralized package management prevents version drift. Null safety catches defects at compile time, reducing runtime errors. .NET 10 ensures access to modern language features and performance improvements.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### II. Architecture & Code Organization
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Code Organization MUST Use Vertical Slice Architecture**: The API MUST use Vertical Slice Architecture. All API logic (endpoints, CQRS handlers) MUST be co-located by feature in `/src/Po.[AppName].Api/Features/`.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**Design MUST Apply SOLID Principles**: Code MUST apply SOLID principles and standard Gang of Four (GoF) design patterns. Their use MUST be documented in code comments or the PRD.
+
+**API Design MUST Use Minimal APIs**: All new endpoints MUST use Minimal APIs. The API project MUST host the Blazor WASM project.
+
+**Repository Structure MUST Follow Standard Layout**:
+- Root folders: `/src`, `/tests`, `/docs`, `/infra`, `/scripts`
+- `/src` projects MUST follow separation of concerns: `...Api`, `...Client`, `...Shared`
+- The `...Shared` project MUST contain ONLY DTOs, contracts, and shared validation logic (e.g., FluentValidation rules). It MUST NOT contain business logic or data access code.
+- `/docs` MUST contain `README.md` (app description and run instructions), mermaid diagrams, KQL query library, and ADRs (Architecture Decision Records).
+- `/scripts` contains helper scripts generated by the coding LLM.
+
+**Rationale**: Vertical slices reduce cognitive load by keeping related code together. SOLID and GoF patterns ensure maintainability. Minimal APIs reduce boilerplate. Standardized structure enables navigation and onboarding. Separating concerns prevents circular dependencies.
+
+### III. Implementation Standards
+
+**API Documentation MUST be Generated**: All API endpoints MUST have Swagger (OpenAPI) generation enabled. `.http` files MUST be maintained in the repository for manual verification of endpoints.
+
+**Health Checks MUST Validate Dependencies**: A health check endpoint MUST exist at `api/health` that validates connectivity to all external dependencies (database, storage, third-party APIs).
+
+**Error Handling MUST Return RFC 7807 Problem Details**: All non-successful API responses (4xx, 5xx) MUST return an `IResult` that serializes to an RFC 7807 Problem Details JSON object. Structured `ILogger.LogError` MUST be used within all `catch` blocks.
+
+**UI Framework MUST Prefer Standard Blazor**: Use standard Blazor WASM controls and the primary component library. `Radzen.Blazor` MAY ONLY be used for complex requirements as needed.
+
+**Responsive Design MUST be Mobile-First**: The UI MUST be mobile-first (portrait mode), responsive, fluid, and touch-friendly.
+
+**Debug Launch MUST Support One-Step F5**: The development environment MUST support a one-step 'F5' debug launch for the API and browser. Implementation: commit a `launch.json` with a `serverReadyAction` to the repository.
+
+**Keys MUST Use AppSettings Locally, Key Vault in Production**: All keys MUST be stored in `appsettings.json` until the app is deployed to Azure. The `Program.cs` file MUST be configured to read from Azure Key Vault ONLY when `ASPNETCORE_ENVIRONMENT` is 'Production'. After deployment, both local and Azure code SHOULD refer to keys in Azure Key Vault, with the exception of local code using Azurite instead of Azure Storage.
+
+**Local Storage MUST Use Azurite**: Use Azurite for local development and integration testing.
+
+**Rationale**: Swagger enables API discoverability. Health checks enable proactive monitoring. RFC 7807 standardizes error responses. Mobile-first design ensures accessibility. One-step F5 reduces friction. Key Vault secures production secrets. Azurite enables offline development.
+
+### IV. Quality & Testing Discipline (NON-NEGOTIABLE)
+
+**Code Hygiene MUST be Maintained**: All build warnings/errors MUST be resolved before pushing changes to GitHub. Run `dotnet format` to ensure style consistency.
+
+**Dependency Hygiene MUST be Maintained**: Regularly check for and apply updates to all packages via `Directory.Packages.props`.
+
+**Workflow MUST Follow TDD for Business Logic**: Apply a TDD workflow (Red → Green → Refactor) for all business logic (e.g., MediatR handlers, domain services). For UI and E2E tests, tests MUST be written contemporaneously with the feature code.
+
+**Test Naming MUST Follow Convention**: Test methods MUST follow the `MethodName_StateUnderTest_ExpectedBehavior` convention.
+
+**Code Coverage MUST Meet 80% Threshold**: Enforce a minimum 80% line coverage threshold (measured by `dotnet-coverage`) for all new business logic. A combined coverage report MUST be generated in `docs/coverage/`.
+
+**Unit Tests MUST Cover Business Logic**: Use xUnit. Unit tests MUST cover all backend business logic (e.g., MediatR handlers) with all external dependencies mocked.
+
+**Component Tests MUST Cover Blazor Components**: Use bUnit. Component tests MUST cover all new Blazor components (rendering, user interactions, state changes), mocking dependencies like `IHttpClientFactory`.
+
+**Integration Tests MUST Cover Happy Path for All Endpoints**: Use xUnit. A "happy path" integration test MUST be created for every new API endpoint, running against a test host and an in-memory database emulator. Realistic test data SHOULD be generated.
+
+**E2E Tests MUST Use Playwright**: 
+- Start API before running E2E tests.
+- Tests MUST target Chromium (mobile and desktop views).
+- **Full-Stack E2E (Default)**: Runs the entire stack (frontend + API + test database) to validate a true user flow.
+- **Isolated E2E (By Exception)**: Uses network mocking only for specific scenarios that are difficult to set up (e.g., simulating a 3rd-party payment provider failure).
+- Integrate automated accessibility and visual regression checks.
+
+**Rationale**: TDD ensures tests drive design and catch regressions early. 80% coverage threshold balances thoroughness with pragmatism. Contemporaneous test writing prevents test debt. Playwright E2E tests validate real user journeys. Accessibility and visual regression checks ensure inclusive, stable UIs.
+
+### V. Operations & Azure DevOps
+
+**Provisioning MUST Use Bicep**: All Azure infrastructure MUST be provisioned using Bicep (from the `/infra` folder) and deployed via Azure Developer CLI (`azd`).
+
+**CI/CD MUST Use Federated Credentials**: The GitHub Actions workflow MUST use Federated Credentials (OIDC) for secure, secret-less connection to Azure.
+
+**GitHub CI/CD MUST Build and Deploy**: The YML file MUST build the code and deploy it to the resource group (e.g., `PoOmad-rg`) as Azure Container Apps (e.g., `PoOmad-app`).
+
+**Required Services MUST be Provisioned**: Bicep scripts MUST provision, at minimum: Application Insights & Log Analytics, Azure Container Apps (with Container Apps Environment), and Azure Storage. All MUST be in the same resource group.
+
+**Cost Management MUST Include Budget Alerts**: A $5 monthly cost budget MUST be created for the application's resource group. The budget MUST be configured with an Action Group to send an email alert to `punkouter26@gmail.com` when 80% of the threshold is met.
+
+**Logging MUST Use Serilog**: Use Serilog for all structured logging. Configuration MUST be driven by `appsettings.json` to write to Debug Console (in Development) and Application Insights (in Production).
+
+**Telemetry MUST Use OpenTelemetry**: Use modern OpenTelemetry abstractions for all custom telemetry. Use `Meter` to create custom metrics for business-critical values.
+
+**Production Diagnostics MUST Be Enabled**: Enable Application Insights Snapshot Debugger and Profiler on Azure Container Apps (if supported) or equivalent diagnostics capabilities.
+
+**KQL Library MUST Exist**: The `docs/kql/` folder MUST be populated with essential queries for monitoring app-specific parameters, users, actions performed, etc.
+
+**Rationale**: Bicep enables infrastructure-as-code. OIDC eliminates secret sprawl. Budget alerts prevent cost overruns. Serilog enables structured logging. OpenTelemetry ensures observability. Snapshot Debugger and Profiler enable production diagnostics. KQL library enables proactive monitoring.
+
+## Development Environment Requirements
+
+**One-Step Debug Launch**: Developers MUST be able to press F5 and have both the API and browser launch with debugging enabled.
+
+**Local Development Independence**: Developers MUST be able to run the full stack locally without Azure dependencies (except Key Vault in production mode), using Azurite for storage.
+
+**Configuration Management**: `appsettings.json` for local secrets, Azure Key Vault for production. `Program.cs` MUST conditionally load Key Vault only when `ASPNETCORE_ENVIRONMENT` is 'Production'.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+**Constitution Authority**: This constitution supersedes all other development practices, guidelines, or conventions. In case of conflict, the constitution takes precedence.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Process**:
+- Amendments require a version bump according to semantic versioning:
+  - **MAJOR**: Backward-incompatible governance changes or principle removals/redefinitions.
+  - **MINOR**: New principle/section added or materially expanded guidance.
+  - **PATCH**: Clarifications, wording, typo fixes, non-semantic refinements.
+- Amendments MUST document rationale, impact, and migration plan.
+- Amendments MUST propagate to dependent templates (`plan-template.md`, `spec-template.md`, `tasks-template.md`).
+
+**Compliance Verification**: All PRs and code reviews MUST verify compliance with this constitution. Deviations MUST be explicitly justified in the PR description or code comments.
+
+**Complexity Justification**: Introduction of additional complexity (e.g., new design patterns, additional projects, architectural layers) MUST be justified against a simpler alternative that was rejected.
+
+**Version**: 1.0.0 | **Ratified**: 2025-11-22 | **Last Amended**: 2025-11-22

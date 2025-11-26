@@ -1,0 +1,109 @@
+@using PoOmad.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
+
+<div class="weight-chart-container">
+    @if (TrendsData == null || !TrendsData.DataPoints.Any())
+    {
+        <div class="no-data">
+            <p>No trend data available</p>
+        </div>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenLineSeries Data="@TrendsData.DataPoints" 
+                              CategoryProperty="Date" 
+                              Title="Weight (lbs)" 
+                              LineType="LineType.Solid"
+                              Smooth="true"
+                              ValueProperty="Weight">
+                <RadzenMarkers MarkerType="MarkerType.Circle" />
+                <RadzenSeriesDataLabels Visible="false" />
+            </RadzenLineSeries>
+
+            <RadzenColumnSeries Data="@AlcoholData" 
+                                CategoryProperty="Date" 
+                                Title="Alcohol" 
+                                ValueProperty="Value">
+                <RadzenSeriesDataLabels Visible="false" />
+            </RadzenColumnSeries>
+
+            <RadzenCategoryAxis Padding="20" FormatString="{0:MMM dd}" />
+            
+            <RadzenValueAxis>
+                <RadzenGridLines Visible="true" />
+                <RadzenAxisTitle Text="Weight (lbs)" />
+            </RadzenValueAxis>
+
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+
+        @if (TrendsData.WeightChange.HasValue)
+        {
+            <div class="weight-summary">
+                <span class="label">Weight Change:</span>
+                <span class="value @(TrendsData.WeightChange.Value < 0 ? "loss" : "gain")">
+                    @(TrendsData.WeightChange.Value > 0 ? "+" : "")@TrendsData.WeightChange.Value.ToString("F1") lbs
+                </span>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public TrendsResponseDto? TrendsData { get; set; }
+
+    private List<AlcoholDataPoint> AlcoholData => TrendsData?.DataPoints
+        .Where(dp => dp.AlcoholConsumed)
+        .Select(dp => new AlcoholDataPoint { Date = dp.Date, Value = 1 })
+        .ToList() ?? new List<AlcoholDataPoint>();
+
+    private class AlcoholDataPoint
+    {
+        public DateTime Date { get; set; }
+        public int Value { get; set; }
+    }
+}
+
+<style>
+    .weight-chart-container {
+        background: #1e1e1e;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #aaa;
+    }
+
+    .weight-summary {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #2a2a2a;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .weight-summary .label {
+        color: #aaa;
+        margin-right: 0.5rem;
+    }
+
+    .weight-summary .value {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+
+    .weight-summary .value.loss {
+        color: #4caf50;
+    }
+
+    .weight-summary .value.gain {
+        color: #f44336;
+    }
+</style>

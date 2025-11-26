@@ -1,0 +1,199 @@
+@page "/analytics"
+@using PoOmad.Shared.DTOs
+@inject Services.ApiClient ApiClient
+
+<PageTitle>PoOmad - Analytics</PageTitle>
+
+<div class="analytics-page">
+    <h1>Weight & Alcohol Analytics</h1>
+
+    @if (_isLoading)
+    {
+        <div class="loading">Loading analytics...</div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="error-message">
+            @_errorMessage
+        </div>
+    }
+    else
+    {
+        <WeightChart TrendsData="_trendsData" />
+
+        @if (_correlationData != null)
+        {
+            <div class="correlation-stats">
+                <h2>Alcohol & Weight Correlation</h2>
+                
+                <div class="stats-grid">
+                    @if (_correlationData.Correlation.HasValue)
+                    {
+                        <div class="stat-card">
+                            <div class="stat-label">Correlation Coefficient</div>
+                            <div class="stat-value">@_correlationData.Correlation.Value.ToString("F3")</div>
+                            <div class="stat-hint">
+                                @GetCorrelationInterpretation(_correlationData.Correlation.Value)
+                            </div>
+                        </div>
+                    }
+
+                    <div class="stat-card">
+                        <div class="stat-label">Days with Alcohol</div>
+                        <div class="stat-value">@_correlationData.DaysWithAlcohol / @_correlationData.TotalDays</div>
+                    </div>
+
+                    @if (_correlationData.AverageWeightWithAlcohol.HasValue)
+                    {
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Weight (with alcohol)</div>
+                            <div class="stat-value">@_correlationData.AverageWeightWithAlcohol.Value.ToString("F1") lbs</div>
+                        </div>
+                    }
+
+                    @if (_correlationData.AverageWeightWithoutAlcohol.HasValue)
+                    {
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Weight (without alcohol)</div>
+                            <div class="stat-value">@_correlationData.AverageWeightWithoutAlcohol.Value.ToString("F1") lbs</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private TrendsResponseDto? _trendsData;
+    private CorrelationDto? _correlationData;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAnalytics();
+    }
+
+    private async Task LoadAnalytics()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Load trends (last 90 days)
+            _trendsData = await ApiClient.GetTrendsAsync();
+
+            if (_trendsData == null || _trendsData.TotalDaysLogged < 3)
+            {
+                _errorMessage = "Log at least 3 days with weight to see your trends.";
+                return;
+            }
+
+            // Load correlation
+            _correlationData = await ApiClient.GetCorrelationAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading analytics: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetCorrelationInterpretation(double correlation)
+    {
+        var absCorr = Math.Abs(correlation);
+        var strength = absCorr switch
+        {
+            >= 0.7 => "Strong",
+            >= 0.4 => "Moderate",
+            >= 0.2 => "Weak",
+            _ => "Negligible"
+        };
+
+        var direction = correlation > 0 ? "positive" : "negative";
+        return $"{strength} {direction} correlation";
+    }
+}
+
+<style>
+    .analytics-page {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        color: #fff;
+    }
+
+    .analytics-page h1 {
+        margin-bottom: 2rem;
+    }
+
+    .loading, .error-message {
+        text-align: center;
+        padding: 3rem;
+        color: #aaa;
+    }
+
+    .error-message {
+        background: #2a2a2a;
+        border-radius: 8px;
+        border-left: 4px solid #f44336;
+    }
+
+    .correlation-stats {
+        margin-top: 2rem;
+        background: #1e1e1e;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .correlation-stats h2 {
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-card {
+        background: #2a2a2a;
+        border-radius: 6px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-label {
+        color: #aaa;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .stat-hint {
+        color: #1976d2;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    @@media (max-width: 768px) {
+        .analytics-page {
+            padding: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

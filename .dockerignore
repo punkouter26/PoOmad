@@ -1,0 +1,34 @@
+# Ignore build artifacts
+bin/
+obj/
+out/
+
+# Ignore Visual Studio files
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Ignore dependencies
+node_modules/
+
+# Ignore temporary files
+*.log
+*.tmp
+*.swp
+
+# Ignore test results
+coverage/
+test-results/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore documentation
+*.md
+docs/
+
+# Keep only application files
+!appsettings.json
+!appsettings.*.json

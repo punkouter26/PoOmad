@@ -1,0 +1,306 @@
+@using PoOmad.Shared.DTOs
+@inject Services.ApiClient ApiClient
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <button class="btn-nav" @onclick="PreviousMonth">
+            <span>‹</span>
+        </button>
+        <h2>@_currentMonth.ToString("MMMM yyyy")</h2>
+        <button class="btn-nav" @onclick="NextMonth">
+            <span>›</span>
+        </button>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="loading">Loading calendar...</div>
+    }
+    else
+    {
+        <div class="calendar-grid">
+            @* Day headers *@
+            <div class="day-header">Sun</div>
+            <div class="day-header">Mon</div>
+            <div class="day-header">Tue</div>
+            <div class="day-header">Wed</div>
+            <div class="day-header">Thu</div>
+            <div class="day-header">Fri</div>
+            <div class="day-header">Sat</div>
+
+            @* Leading empty cells *@
+            @for (int i = 0; i < _leadingEmptyCells; i++)
+            {
+                <div class="day-cell empty"></div>
+            }
+
+            @* Day cells *@
+            @foreach (var day in _daysInMonth)
+            {
+                var log = _monthlyLogs.FirstOrDefault(l => l.Date.Date == day.Date);
+                var cellClass = GetCellClass(day, log);
+                var isToday = day.Date == DateTime.Today;
+                var isFuture = day > DateTime.Today;
+
+                <div class="day-cell @cellClass @(isToday ? "today" : "")" 
+                     @onclick="() => OpenLogModal(day, isFuture)">
+                    <div class="day-number">@day.Day</div>
+                    @if (log != null && log.Weight.HasValue)
+                    {
+                        <div class="day-weight">@log.Weight.Value.ToString("F1") lbs</div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<DailyLogModal IsVisible="_showModal" 
+               SelectedDate="_selectedDate" 
+               OnClose="CloseModal"
+               OnSaved="RefreshCalendar" />
+
+@code {
+    private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<DailyLogDto> _monthlyLogs = new();
+    private List<DateTime> _daysInMonth = new();
+    private int _leadingEmptyCells;
+    private bool _isLoading = true;
+    private bool _showModal;
+    private DateTime _selectedDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCalendar();
+    }
+
+    private async Task LoadCalendar()
+    {
+        _isLoading = true;
+        
+        try
+        {
+            // Generate days for the month
+            _daysInMonth = Enumerable.Range(1, DateTime.DaysInMonth(_currentMonth.Year, _currentMonth.Month))
+                .Select(day => new DateTime(_currentMonth.Year, _currentMonth.Month, day))
+                .ToList();
+
+            // Calculate leading empty cells (to align with Sunday)
+            var firstDayOfWeek = (int)_daysInMonth.First().DayOfWeek; // 0 = Sunday
+            _leadingEmptyCells = firstDayOfWeek;
+
+            // Load logs for the month
+            _monthlyLogs = await ApiClient.GetMonthlyLogsAsync(_currentMonth.Year, _currentMonth.Month) ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading calendar: {ex.Message}");
+            _monthlyLogs = new();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetCellClass(DateTime day, DailyLogDto? log)
+    {
+        if (day > DateTime.Today)
+            return "future";
+
+        if (log == null)
+            return "unlogged";
+
+        return log.OmadCompliant ? "compliant" : "non-compliant";
+    }
+
+    private void OpenLogModal(DateTime day, bool isFuture)
+    {
+        if (isFuture)
+            return; // Don't allow logging future dates
+
+        _selectedDate = day;
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+    }
+
+    private async Task RefreshCalendar()
+    {
+        await LoadCalendar();
+        StateHasChanged();
+    }
+
+    private async Task PreviousMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(-1);
+        await LoadCalendar();
+    }
+
+    private async Task NextMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(1);
+        await LoadCalendar();
+    }
+}
+
+<style>
+    .calendar-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #1e1e1e;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .calendar-header h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.5rem;
+    }
+
+    .btn-nav {
+        background: #333;
+        border: none;
+        color: #fff;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        transition: background 0.2s;
+    }
+
+    .btn-nav:hover {
+        background: #1976d2;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+
+    .day-header {
+        padding: 10px;
+        text-align: center;
+        color: #aaa;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .day-cell {
+        aspect-ratio: 1;
+        padding: 8px;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .day-cell.empty {
+        cursor: default;
+        background: transparent;
+    }
+
+    .day-cell.unlogged {
+        background: #2a2a2a;
+        border: 1px solid #444;
+    }
+
+    .day-cell.unlogged:hover {
+        background: #333;
+        border-color: #1976d2;
+    }
+
+    .day-cell.compliant {
+        background: #1b5e20;
+        border: 1px solid #2e7d32;
+    }
+
+    .day-cell.compliant:hover {
+        background: #2e7d32;
+    }
+
+    .day-cell.non-compliant {
+        background: #b71c1c;
+        border: 1px solid #c62828;
+    }
+
+    .day-cell.non-compliant:hover {
+        background: #c62828;
+    }
+
+    .day-cell.future {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .day-cell.today {
+        box-shadow: 0 0 0 3px #1976d2;
+    }
+
+    .day-number {
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.125rem;
+        margin-bottom: 4px;
+    }
+
+    .day-weight {
+        color: #fff;
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 3rem;
+        color: #aaa;
+    }
+
+    @@media (max-width: 768px) {
+        .calendar-container {
+            padding: 1rem;
+        }
+
+        .calendar-grid {
+            gap: 4px;
+        }
+
+        .day-cell {
+            padding: 4px;
+        }
+
+        .day-number {
+            font-size: 0.875rem;
+        }
+
+        .day-weight {
+            font-size: 0.625rem;
+        }
+
+        .calendar-header h2 {
+            font-size: 1.25rem;
+        }
+    }
+</style>

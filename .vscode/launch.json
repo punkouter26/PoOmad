@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Aspire AppHost",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/PoOmad.AppHost/PoOmad.AppHost/PoOmad.AppHost.csproj"
+    },
+    {
+      "name": "Attach to Blazor WebAssembly",
+      "type": "blazorwasm",
+      "request": "attach",
+      "browser": "edge",
+      "url": "https://localhost:7105"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "PoOmad Full Stack (F5)",
+      "configurations": [
+        "Launch Aspire AppHost",
+        "Attach to Blazor WebAssembly"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "PoOmad",
+        "order": 1
+      }
+    }
+  ]
+}
