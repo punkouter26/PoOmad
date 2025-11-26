@@ -20,9 +20,11 @@ public static class GoogleAuthEndpoints
         // GET /api/auth/google - Initiate Google OAuth flow
         group.MapGet("/google", async (HttpContext context) =>
         {
+            // Redirect URI is where the user goes AFTER successful auth
+            // The OAuth callback (/signin-google) is handled automatically by ASP.NET
             var properties = new AuthenticationProperties
             {
-                RedirectUri = "/api/auth/google/callback",
+                RedirectUri = "/", // Go to home page after successful login
                 Items = { { "scheme", GoogleDefaults.AuthenticationScheme } }
             };
 
@@ -31,39 +33,8 @@ public static class GoogleAuthEndpoints
         .WithName("InitiateGoogleAuth")
         .AllowAnonymous();
 
-        // GET /api/auth/google/callback - Handle Google OAuth callback
-        group.MapGet("/google/callback", async (HttpContext context) =>
-        {
-            var result = await context.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
-
-            if (!result.Succeeded)
-                return Results.Redirect("/auth?error=authentication_failed");
-
-            var claims = result.Principal?.Claims.ToList() ?? new List<Claim>();
-            var googleId = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-
-            if (string.IsNullOrEmpty(googleId) || string.IsNullOrEmpty(email))
-                return Results.Redirect("/auth?error=missing_claims");
-
-            // Create authentication cookie with claims
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new ClaimsPrincipal(identity);
-
-            await context.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                principal,
-                new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
-                });
-
-            // Redirect to client app (same origin since WASM is hosted in API)
-            return Results.Redirect("/");
-        })
-        .WithName("GoogleAuthCallback")
-        .AllowAnonymous();
+        // Note: OAuth callback is handled automatically by ASP.NET Core at /signin-google
+        // After successful auth, user is redirected to RedirectUri specified above
 
         // GET /api/auth/me - Get current authenticated user info
         group.MapGet("/me", async (HttpContext context, IMediator mediator) =>

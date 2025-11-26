@@ -6,7 +6,6 @@
   <ItemGroup>
     <!-- Aspire Hosting -->
     <PackageVersion Include="Aspire.Hosting" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.0.0" />
     

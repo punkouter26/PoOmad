@@ -80,7 +80,8 @@ try
         {
             options.ClientId = googleClientId;
             options.ClientSecret = googleClientSecret;
-            options.CallbackPath = "/api/auth/google/callback";
+            options.CallbackPath = "/signin-google"; // Use default callback path
+            options.SaveTokens = true;
         });
     }
     else
