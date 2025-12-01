@@ -32,7 +32,7 @@ try
     builder.Services.AddOpenApi();
     builder.Services.AddEndpointsApiExplorer();
 
-    // Application Insights (telemetry will be added after Aspire integration)
+    // Application Insights for telemetry
     builder.Services.AddApplicationInsightsTelemetry();
 
     // OpenTelemetry

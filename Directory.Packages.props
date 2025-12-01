@@ -4,11 +4,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <!-- Aspire Hosting -->
-    <PackageVersion Include="Aspire.Hosting" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.0.0" />
-    
     <!-- Azure Storage -->
     <PackageVersion Include="Azure.Data.Tables" Version="12.9.1" />
     
@@ -39,7 +34,10 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
     
     <!-- Radzen Blazor Components -->
-    <PackageVersion Include="Radzen.Blazor" Version="5.6.8" />
+    <PackageVersion Include="Radzen.Blazor" Version="8.3.5" />
+    
+    <!-- Override vulnerable transitive dependency -->
+    <PackageVersion Include="System.Linq.Dynamic.Core" Version="1.7.1" />
     
     <!-- Testing - xUnit -->
     <PackageVersion Include="xunit" Version="2.9.3" />

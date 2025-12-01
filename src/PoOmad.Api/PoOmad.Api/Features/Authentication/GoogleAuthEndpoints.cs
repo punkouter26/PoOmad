@@ -18,8 +18,20 @@ public static class GoogleAuthEndpoints
             .RequireRateLimiting(RateLimitingConfig.AuthPolicy);
 
         // GET /api/auth/google - Initiate Google OAuth flow
-        group.MapGet("/google", async (HttpContext context) =>
+        group.MapGet("/google", async (HttpContext context, IConfiguration configuration) =>
         {
+            // Check if Google auth is configured
+            var clientId = configuration["Authentication:Google:ClientId"];
+            var clientSecret = configuration["Authentication:Google:ClientSecret"];
+            
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            {
+                return Results.Problem(
+                    title: "Google OAuth Not Configured",
+                    detail: "Google OAuth credentials are not configured. Please set Authentication:Google:ClientId and Authentication:Google:ClientSecret in your configuration.",
+                    statusCode: 503);
+            }
+
             // Redirect URI is where the user goes AFTER successful auth
             // The OAuth callback (/signin-google) is handled automatically by ASP.NET
             var properties = new AuthenticationProperties
@@ -29,6 +41,7 @@ public static class GoogleAuthEndpoints
             };
 
             await context.ChallengeAsync(GoogleDefaults.AuthenticationScheme, properties);
+            return Results.Empty;
         })
         .WithName("InitiateGoogleAuth")
         .AllowAnonymous();

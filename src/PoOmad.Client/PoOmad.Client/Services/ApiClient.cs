@@ -63,9 +63,23 @@ public class ApiClient
 
     public async Task<int> GetStreakAsync()
     {
-        var response = await _httpClient.GetFromJsonAsync<dynamic>("/api/daily-logs/streak");
-        return response?.streak ?? 0;
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/daily-logs/streak");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<StreakResponse>();
+                return json?.Streak ?? 0;
+            }
+            return 0;
+        }
+        catch
+        {
+            return 0;
+        }
     }
+
+    private record StreakResponse(int Streak);
 
     public async Task<(bool success, string? error)> LogDayAsync(DailyLogDto log, bool confirm = false)
     {

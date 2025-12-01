@@ -1,4 +1,8 @@
 ﻿@inherits LayoutComponentBase
+@inject PoOmad.Client.Services.AuthStateService AuthState
+@inject PoOmad.Client.Services.ApiClient ApiClient
+@implements IDisposable
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -6,6 +10,15 @@
 
     <main>
         <div class="top-row px-4">
+            @if (AuthState.IsAuthenticated)
+            {
+                <span class="me-3">Hello, @AuthState.CurrentUser?.Email</span>
+                <a href="/api/auth/signout" class="btn btn-link">Sign Out</a>
+            }
+            else
+            {
+                <a href="/api/auth/google">Sign In with Google</a>
+            }
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
 
@@ -14,3 +27,27 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        AuthState.OnChange += StateHasChanged;
+        
+        // Load current user on startup
+        try
+        {
+            var user = await ApiClient.GetCurrentUserAsync();
+            AuthState.SetUser(user);
+        }
+        catch
+        {
+            // Not authenticated or API error
+            AuthState.ClearUser();
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= StateHasChanged;
+    }
+}
