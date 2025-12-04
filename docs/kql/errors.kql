@@ -1,0 +1,113 @@
+// PoOmad Error Tracking Queries
+// Use these in Azure Application Insights → Logs
+
+// ==============================================================================
+// RECENT EXCEPTIONS
+// View most recent unhandled exceptions
+// ==============================================================================
+exceptions
+| where timestamp > ago(24h)
+| project 
+    timestamp,
+    problemId,
+    type,
+    method,
+    outerMessage,
+    innermostMessage,
+    severityLevel
+| order by timestamp desc
+| take 100
+
+// ==============================================================================
+// EXCEPTION SUMMARY BY TYPE
+// Group exceptions by type to identify patterns
+// ==============================================================================
+exceptions
+| where timestamp > ago(7d)
+| summarize 
+    Count = count(),
+    FirstSeen = min(timestamp),
+    LastSeen = max(timestamp)
+    by type, problemId
+| order by Count desc
+
+// ==============================================================================
+// FAILED REQUESTS BY ENDPOINT
+// Identify which endpoints have the most failures
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where success == false
+| summarize 
+    FailureCount = count(),
+    LastFailure = max(timestamp)
+    by name, resultCode
+| order by FailureCount desc
+
+// ==============================================================================
+// HTTP 4XX ERRORS (Client Errors)
+// Validation errors, 404s, unauthorized, etc.
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where toint(resultCode) >= 400 and toint(resultCode) < 500
+| summarize Count = count() by resultCode, name
+| order by Count desc
+
+// ==============================================================================
+// HTTP 5XX ERRORS (Server Errors)
+// Critical: requires immediate attention
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where toint(resultCode) >= 500
+| project 
+    timestamp,
+    name,
+    resultCode,
+    duration,
+    customDimensions
+| order by timestamp desc
+
+// ==============================================================================
+// ERROR RATE TREND
+// Track error rate over time (for alerting)
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| summarize 
+    TotalRequests = count(),
+    ErrorCount = countif(toint(resultCode) >= 500),
+    ErrorRate = round(100.0 * countif(toint(resultCode) >= 500) / count(), 2)
+    by bin(timestamp, 1h)
+| order by timestamp desc
+
+// ==============================================================================
+// EXCEPTIONS WITH STACK TRACES
+// Detailed view for debugging
+// ==============================================================================
+exceptions
+| where timestamp > ago(1h)
+| project 
+    timestamp,
+    type,
+    outerMessage,
+    innermostMessage,
+    details = tostring(details)
+| order by timestamp desc
+| take 20
+
+// ==============================================================================
+// VALIDATION ERRORS (400 Bad Request)
+// Track input validation failures
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where resultCode == "400"
+| project 
+    timestamp,
+    name,
+    url,
+    duration,
+    customDimensions
+| order by timestamp desc

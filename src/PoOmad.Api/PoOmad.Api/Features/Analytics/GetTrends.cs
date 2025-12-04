@@ -57,7 +57,8 @@ public class GetTrendsHandler : IRequestHandler<GetTrendsQuery, TrendsResponseDt
             if (log != null)
             {
                 // Actual logged data
-                var weight = log.Weight ?? lastKnownWeight; // Use logged weight or carry forward
+                var logWeight = log.Weight.HasValue ? (decimal?)log.Weight.Value : null;
+                var weight = logWeight ?? lastKnownWeight; // Use logged weight or carry forward
                 dataPoints.Add(new TrendDataPointDto(
                     date,
                     weight,
@@ -67,7 +68,7 @@ public class GetTrendsHandler : IRequestHandler<GetTrendsQuery, TrendsResponseDt
 
                 if (log.Weight.HasValue)
                 {
-                    lastKnownWeight = log.Weight.Value;
+                    lastKnownWeight = (decimal)log.Weight.Value;
                 }
             }
             else if (lastKnownWeight.HasValue)

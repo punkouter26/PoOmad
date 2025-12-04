@@ -9,6 +9,7 @@ using PoOmad.Api.Features.Analytics;
 using Serilog;
 using FluentValidation;
 using OpenTelemetry.Metrics;
+using Azure.Identity;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -20,6 +21,16 @@ try
     Log.Information("Starting PoOmad API");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    // Add Azure Key Vault configuration
+    var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
+    if (!string.IsNullOrEmpty(keyVaultUri))
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultUri),
+            new DefaultAzureCredential());
+        Log.Information("Azure Key Vault configuration loaded from {KeyVaultUri}", keyVaultUri);
+    }
 
     // Add Serilog
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -107,7 +118,34 @@ try
     }
 
     app.UseExceptionHandling();
-    app.UseSerilogRequestLogging();
+    
+    // Configure Serilog request logging to reduce noise
+    app.UseSerilogRequestLogging(options =>
+    {
+        // Don't log static file requests (Blazor WASM files)
+        options.GetLevel = (httpContext, elapsed, ex) =>
+        {
+            if (ex != null) return Serilog.Events.LogEventLevel.Error;
+            
+            var path = httpContext.Request.Path.Value ?? "";
+            // Suppress logging for static files
+            if (path.StartsWith("/_framework") || 
+                path.StartsWith("/_content") || 
+                path.StartsWith("/css") || 
+                path.StartsWith("/lib") ||
+                path.EndsWith(".js") ||
+                path.EndsWith(".css") ||
+                path.EndsWith(".wasm") ||
+                path.EndsWith(".dat") ||
+                path.EndsWith(".png") ||
+                path.EndsWith(".ico"))
+            {
+                return Serilog.Events.LogEventLevel.Verbose; // Won't be logged at Info level
+            }
+            
+            return Serilog.Events.LogEventLevel.Information;
+        };
+    });
     
     // Only use HTTPS redirection in production
     if (!app.Environment.IsDevelopment())

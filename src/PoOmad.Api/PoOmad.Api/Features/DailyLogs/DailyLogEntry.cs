@@ -17,6 +17,6 @@ public class DailyLogEntry : ITableEntity
     // Log properties
     public bool OmadCompliant { get; set; }
     public bool AlcoholConsumed { get; set; }
-    public decimal? Weight { get; set; }
+    public double? Weight { get; set; }
     public DateTime ServerTimestamp { get; set; }
 }

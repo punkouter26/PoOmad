@@ -1,5 +1,7 @@
 @page "/auth"
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @inject NavigationManager Navigation
+@inject IWebAssemblyHostEnvironment HostEnvironment
 
 <div class="auth-container">
     <div class="auth-card">
@@ -9,6 +11,13 @@
         <button class="btn-google" @onclick="SignInWithGoogle">
             <span>Sign in with Google</span>
         </button>
+
+        @if (HostEnvironment.IsDevelopment())
+        {
+            <button class="btn-dev" @onclick="DevLogin">
+                <span>🔧 Dev Login (No OAuth)</span>
+            </button>
+        }
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -41,6 +50,11 @@
     private void SignInWithGoogle()
     {
         Navigation.NavigateTo("/api/auth/google", true);
+    }
+
+    private void DevLogin()
+    {
+        Navigation.NavigateTo("/api/auth/dev-login", true);
     }
 }
 
@@ -85,6 +99,24 @@
 
     .btn-google:hover {
         background: #f0f0f0;
+    }
+
+    .btn-dev {
+        display: block;
+        width: 100%;
+        margin-top: 1rem;
+        background: #4a4a4a;
+        color: #fff;
+        border: 1px dashed #888;
+        padding: 12px 24px;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-dev:hover {
+        background: #5a5a5a;
     }
 
     .error-message {

@@ -45,7 +45,7 @@ public class LogDayHandler : IRequestHandler<LogDayCommand, DailyLogDto>
             RowKey = rowKey,
             OmadCompliant = request.OmadCompliant,
             AlcoholConsumed = request.AlcoholConsumed,
-            Weight = request.Weight,
+            Weight = request.Weight.HasValue ? (double)request.Weight.Value : null,
             ServerTimestamp = DateTime.UtcNow
         };
 
@@ -58,7 +58,8 @@ public class LogDayHandler : IRequestHandler<LogDayCommand, DailyLogDto>
                 cancellationToken: cancellationToken);
 
             entity.ETag = existing.Value.ETag;
-            await tableClient.UpdateEntityAsync(entity, entity.ETag, cancellationToken: cancellationToken);
+            // Use Replace mode to ensure all properties are updated (not merged)
+            await tableClient.UpdateEntityAsync(entity, entity.ETag, TableUpdateMode.Replace, cancellationToken);
             _logger.LogInformation("Updated log for {GoogleId} on {Date}", request.GoogleId, request.Date);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -72,7 +73,7 @@ public class LogDayHandler : IRequestHandler<LogDayCommand, DailyLogDto>
             Date = request.Date,
             OmadCompliant = entity.OmadCompliant,
             AlcoholConsumed = entity.AlcoholConsumed,
-            Weight = entity.Weight,
+            Weight = entity.Weight.HasValue ? (decimal)entity.Weight.Value : null,
             ServerTimestamp = entity.ServerTimestamp
         };
     }
@@ -97,7 +98,7 @@ public class LogDayHandler : IRequestHandler<LogDayCommand, DailyLogDto>
 
             if (previousEntry.Value.Weight.HasValue)
             {
-                var weightDifference = Math.Abs(currentWeight - previousEntry.Value.Weight.Value);
+                var weightDifference = Math.Abs(currentWeight - (decimal)previousEntry.Value.Weight.Value);
                 if (weightDifference > 5)
                 {
                     throw new InvalidOperationException(

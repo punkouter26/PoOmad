@@ -49,12 +49,12 @@ public class GetCorrelationHandler : IRequestHandler<GetCorrelationQuery, Correl
         var daysWithoutAlcohol = logsWithWeight.Where(l => !l.AlcoholConsumed).ToList();
 
         var avgWeightWithAlcohol = daysWithAlcohol.Any()
-            ? daysWithAlcohol.Average(l => l.Weight!.Value)
-            : (decimal?)null;
+            ? (decimal?)daysWithAlcohol.Average(l => l.Weight!.Value)
+            : null;
 
         var avgWeightWithoutAlcohol = daysWithoutAlcohol.Any()
-            ? daysWithoutAlcohol.Average(l => l.Weight!.Value)
-            : (decimal?)null;
+            ? (decimal?)daysWithoutAlcohol.Average(l => l.Weight!.Value)
+            : null;
 
         // Calculate Pearson correlation coefficient
         double? correlation = null;

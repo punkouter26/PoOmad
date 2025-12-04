@@ -1,0 +1,118 @@
+// PoOmad Latency & Performance Queries
+// Use these in Azure Application Insights → Logs
+
+// ==============================================================================
+// RESPONSE TIME PERCENTILES BY ENDPOINT
+// Identify slow endpoints
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name startswith "/api/"
+| summarize 
+    Requests = count(),
+    Avg = avg(duration),
+    P50 = percentile(duration, 50),
+    P90 = percentile(duration, 90),
+    P95 = percentile(duration, 95),
+    P99 = percentile(duration, 99)
+    by name
+| order by P95 desc
+
+// ==============================================================================
+// SLOW REQUESTS (>1 second)
+// Requests that may indicate performance issues
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where duration > 1000
+| project 
+    timestamp,
+    name,
+    duration,
+    resultCode,
+    customDimensions
+| order by duration desc
+| take 100
+
+// ==============================================================================
+// RESPONSE TIME TREND
+// Track performance over time
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where name startswith "/api/"
+| summarize 
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95)
+    by bin(timestamp, 1h)
+| order by timestamp asc
+
+// ==============================================================================
+// TABLE STORAGE LATENCY
+// Monitor Azure Table Storage dependency
+// ==============================================================================
+dependencies
+| where timestamp > ago(24h)
+| where type == "Azure table" or target contains "table.core.windows.net"
+| summarize 
+    Calls = count(),
+    AvgDuration = avg(duration),
+    P50 = percentile(duration, 50),
+    P95 = percentile(duration, 95),
+    P99 = percentile(duration, 99)
+    by name
+| order by P95 desc
+
+// ==============================================================================
+// DAILY LOGS ENDPOINT PERFORMANCE
+// Specific focus on core feature
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name contains "/api/daily-logs"
+| summarize 
+    Requests = count(),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95),
+    SuccessRate = round(100.0 * countif(success == true) / count(), 2)
+    by name
+| order by Requests desc
+
+// ==============================================================================
+// STREAK CALCULATION PERFORMANCE
+// Monitor the streak endpoint specifically
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name contains "/streak"
+| summarize 
+    Requests = count(),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95)
+    by bin(timestamp, 1h)
+| order by timestamp desc
+
+// ==============================================================================
+// REQUEST THROUGHPUT
+// Requests per minute over time
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| summarize RequestsPerMinute = count() by bin(timestamp, 1m)
+| order by timestamp desc
+
+// ==============================================================================
+// PERFORMANCE DEGRADATION ALERT QUERY
+// Use this for alerting on latency spikes
+// ==============================================================================
+requests
+| where timestamp > ago(15m)
+| where name startswith "/api/"
+| summarize 
+    P95 = percentile(duration, 95),
+    RequestCount = count()
+| where P95 > 2000 or RequestCount < 1
+| project 
+    AlertType = iff(P95 > 2000, "High Latency", "No Traffic"),
+    P95_ms = P95,
+    RequestCount

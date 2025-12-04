@@ -38,7 +38,7 @@ public class GetDayLogHandler : IRequestHandler<GetDayLogQuery, DailyLogDto?>
                 Date = DateTime.Parse(entity.RowKey),
                 OmadCompliant = entity.OmadCompliant,
                 AlcoholConsumed = entity.AlcoholConsumed,
-                Weight = entity.Weight,
+                Weight = entity.Weight.HasValue ? (decimal)entity.Weight.Value : null,
                 ServerTimestamp = entity.ServerTimestamp
             };
         }

@@ -46,6 +46,44 @@ public static class GoogleAuthEndpoints
         .WithName("InitiateGoogleAuth")
         .AllowAnonymous();
 
+        // DEV ONLY: Login as test user without Google OAuth
+        // This endpoint only works in Development environment
+        group.MapGet("/dev-login", async (HttpContext context, IHostEnvironment env, IMediator mediator) =>
+        {
+            if (!env.IsDevelopment())
+            {
+                return Results.NotFound();
+            }
+
+            const string devUserId = "dev-user-12345";
+            const string devUserEmail = "dev@localhost.test";
+
+            // Create claims for a fake dev user
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, devUserId),
+                new(ClaimTypes.Email, devUserEmail),
+                new(ClaimTypes.Name, "Dev User")
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            // Ensure dev user has a profile so they don't get redirected to /setup
+            var existingProfile = await mediator.Send(new GetProfileQuery(devUserId));
+            if (existingProfile == null)
+            {
+                await mediator.Send(new CreateProfileCommand(devUserId, devUserEmail, "5'10\"", 180.0m));
+            }
+
+            return Results.Redirect("/");
+        })
+        .WithName("DevLogin")
+        .AllowAnonymous()
+        .DisableRateLimiting(); // Disable rate limiting for dev-login to allow E2E testing
+
         // Note: OAuth callback is handled automatically by ASP.NET Core at /signin-google
         // After successful auth, user is redirected to RedirectUri specified above
 

@@ -1,0 +1,119 @@
+// PoOmad User Activity Queries
+// Use these in Azure Application Insights → Logs
+
+// ==============================================================================
+// DAILY ACTIVE USERS
+// Count unique authenticated users
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name startswith "/api/"
+| where isnotempty(user_AuthenticatedId)
+| summarize UniqueUsers = dcount(user_AuthenticatedId)
+
+// ==============================================================================
+// USER ACTIVITY TREND
+// Daily active users over time
+// ==============================================================================
+requests
+| where timestamp > ago(30d)
+| where name startswith "/api/"
+| where isnotempty(user_AuthenticatedId)
+| summarize UniqueUsers = dcount(user_AuthenticatedId) by bin(timestamp, 1d)
+| order by timestamp asc
+
+// ==============================================================================
+// FEATURE USAGE (Endpoint Popularity)
+// Which features are used most
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where name startswith "/api/"
+| summarize 
+    Requests = count(),
+    UniqueUsers = dcount(user_AuthenticatedId)
+    by name
+| order by Requests desc
+
+// ==============================================================================
+// DAILY LOG SUBMISSIONS
+// Track core feature engagement
+// ==============================================================================
+requests
+| where timestamp > ago(30d)
+| where name == "POST /api/daily-logs" or name contains "daily-logs"
+| where resultCode == "200" or resultCode == "201"
+| summarize LogsSubmitted = count() by bin(timestamp, 1d)
+| order by timestamp asc
+
+// ==============================================================================
+// AUTHENTICATION FLOW
+// Track sign-ins and sign-outs
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where name contains "/api/auth"
+| summarize Count = count() by name, bin(timestamp, 1d)
+| order by timestamp desc
+
+// ==============================================================================
+// USER SESSION DURATION
+// Average session length (time between first and last request)
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where isnotempty(user_AuthenticatedId)
+| summarize 
+    SessionStart = min(timestamp),
+    SessionEnd = max(timestamp),
+    RequestCount = count()
+    by user_AuthenticatedId, bin(timestamp, 1d)
+| extend SessionDurationMinutes = datetime_diff('minute', SessionEnd, SessionStart)
+| summarize AvgSessionMinutes = avg(SessionDurationMinutes), AvgRequests = avg(RequestCount) by bin(SessionStart, 1d)
+
+// ==============================================================================
+// PEAK USAGE HOURS
+// When is the app used most
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where name startswith "/api/"
+| extend HourOfDay = hourofday(timestamp)
+| summarize RequestCount = count() by HourOfDay
+| order by RequestCount desc
+
+// ==============================================================================
+// GEOGRAPHIC DISTRIBUTION
+// Where are users located
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where isnotempty(client_CountryOrRegion)
+| summarize 
+    Requests = count(),
+    UniqueUsers = dcount(user_AuthenticatedId)
+    by client_CountryOrRegion
+| order by UniqueUsers desc
+
+// ==============================================================================
+// WEIGHT LOGGING TREND
+// Track weight data submissions (optional field usage)
+// ==============================================================================
+customEvents
+| where timestamp > ago(30d)
+| where name == "WeightLogged" or customDimensions contains "weight"
+| summarize WeightLogs = count() by bin(timestamp, 1d)
+| order by timestamp asc
+
+// ==============================================================================
+// MONTHLY RECAP USAGE
+// Track analytics feature engagement
+// ==============================================================================
+requests
+| where timestamp > ago(30d)
+| where name contains "/api/analytics" or name contains "monthly"
+| summarize 
+    Requests = count(),
+    UniqueUsers = dcount(user_AuthenticatedId)
+    by bin(timestamp, 1d)
+| order by timestamp desc

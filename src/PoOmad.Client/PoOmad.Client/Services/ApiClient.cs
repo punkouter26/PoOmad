@@ -80,6 +80,7 @@ public class ApiClient
     }
 
     private record StreakResponse(int Streak);
+    private record ErrorResponse(string? Error, bool? RequiresConfirmation);
 
     public async Task<(bool success, string? error)> LogDayAsync(DailyLogDto log, bool confirm = false)
     {
@@ -91,8 +92,15 @@ public class ApiClient
 
         if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
-            var error = await response.Content.ReadFromJsonAsync<dynamic>();
-            return (false, error?.error?.ToString());
+            try
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                return (false, errorResponse?.Error);
+            }
+            catch
+            {
+                return (false, "Failed to parse error response");
+            }
         }
 
         return (false, "Failed to log day");

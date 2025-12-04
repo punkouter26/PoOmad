@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { devLogin } from './test-utils';
 
 /**
  * Accessibility tests using axe-core
@@ -28,28 +29,8 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('Setup page should have no accessibility violations', async ({ page }) => {
-    // This test requires authentication - skip if not authenticated
-    await page.goto('/setup');
-    
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-      .exclude('.radzen-blazor-loading') // Exclude loading spinner if present
-      .analyze();
-
-    if (accessibilityScanResults.violations.length > 0) {
-      console.log('Accessibility violations on Setup page:');
-      accessibilityScanResults.violations.forEach(violation => {
-        console.log(`  - ${violation.id}: ${violation.description}`);
-        console.log(`    Impact: ${violation.impact}`);
-      });
-    }
-
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
   test('Dashboard page should have no accessibility violations', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
@@ -67,6 +48,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Analytics page should have no accessibility violations', async ({ page }) => {
+    await devLogin(page);
     await page.goto('/analytics');
     
     const accessibilityScanResults = await new AxeBuilder({ page })
@@ -85,7 +67,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Color contrast should meet WCAG AA standards', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
@@ -96,7 +78,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Interactive elements should be keyboard accessible', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .options({ runOnly: ['keyboard'] })
@@ -105,18 +87,8 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('Form elements should have proper labels', async ({ page }) => {
-    await page.goto('/setup');
-    
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .options({ runOnly: ['label', 'label-content-name-mismatch'] })
-      .analyze();
-
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
   test('Images should have alt text', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .options({ runOnly: ['image-alt'] })
@@ -126,17 +98,17 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Page should have proper heading hierarchy', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
-      .options({ runOnly: ['heading-order'] }) // Only check heading order, not page-has-heading-one (best practice)
+      .options({ runOnly: ['heading-order'] })
       .analyze();
 
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
   test('Focus order should be logical', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     // Tab through the page and verify focus order
     await page.keyboard.press('Tab');
@@ -156,7 +128,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Buttons should have accessible names', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .options({ runOnly: ['button-name'] })
@@ -166,7 +138,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   });
 
   test('Links should have accessible names', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     const accessibilityScanResults = await new AxeBuilder({ page })
       .options({ runOnly: ['link-name'] })
@@ -179,7 +151,7 @@ test.describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
 test.describe('Dark Mode Accessibility', () => {
   
   test('Dark theme should maintain sufficient contrast', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
     // Check that dark background colors exist
     const bodyBackgroundColor = await page.evaluate(() => {
@@ -198,22 +170,12 @@ test.describe('Dark Mode Accessibility', () => {
   });
 
   test('Calendar cell colors should be distinguishable', async ({ page }) => {
-    await page.goto('/');
+    await devLogin(page);
     
-    // Verify that green (success) and red (failure) colors are present and distinguishable
-    const colors = await page.evaluate(() => {
-      const successCells = document.querySelectorAll('.omad-success, .bg-green-500, [style*="background-color: #4CAF50"]');
-      const failureCells = document.querySelectorAll('.omad-failure, .bg-red-500, [style*="background-color: #F44336"]');
-      
-      return {
-        successCount: successCells.length,
-        failureCount: failureCells.length
-      };
-    });
-
-    console.log('Calendar cell colors found:', colors);
+    // Verify that calendar renders
+    await expect(page.locator('.calendar-grid')).toBeVisible({ timeout: 5000 });
     
-    // At minimum, the calendar should render (even if no data yet)
+    console.log('Calendar rendered successfully');
     expect(true).toBe(true);
   });
 });

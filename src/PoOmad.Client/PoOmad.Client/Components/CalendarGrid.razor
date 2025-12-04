@@ -106,12 +106,12 @@
     private string GetCellClass(DateTime day, DailyLogDto? log)
     {
         if (day > DateTime.Today)
-            return "future";
+            return "future"; // Black - future dates
 
         if (log == null)
-            return "unlogged";
+            return "missed"; // Red - no data entered for past/current date
 
-        return log.OmadCompliant ? "compliant" : "non-compliant";
+        return "completed"; // Green - data was entered
     }
 
     private void OpenLogModal(DateTime day, bool isFuture)
@@ -220,32 +220,22 @@
         background: transparent;
     }
 
-    .day-cell.unlogged {
-        background: #2a2a2a;
-        border: 1px solid #444;
-    }
-
-    .day-cell.unlogged:hover {
-        background: #333;
-        border-color: #1976d2;
-    }
-
-    .day-cell.compliant {
-        background: #1b5e20;
-        border: 1px solid #2e7d32;
-    }
-
-    .day-cell.compliant:hover {
-        background: #2e7d32;
-    }
-
-    .day-cell.non-compliant {
+    .day-cell.missed {
         background: #b71c1c;
         border: 1px solid #c62828;
     }
 
-    .day-cell.non-compliant:hover {
+    .day-cell.missed:hover {
         background: #c62828;
+    }
+
+    .day-cell.completed {
+        background: #1b5e20;
+        border: 1px solid #2e7d32;
+    }
+
+    .day-cell.completed:hover {
+        background: #2e7d32;
     }
 
     .day-cell.future {

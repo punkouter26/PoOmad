@@ -1,0 +1,196 @@
+# PoOmad CI/CD Pipeline
+# Uses OIDC/Federated Credentials for secure Azure authentication
+
+name: Deploy PoOmad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  AZURE_WEBAPP_NAME: poomad-prod-app
+  AZURE_RESOURCE_GROUP: rg-poomad-prod
+
+jobs:
+  # ============================================================================
+  # BUILD & TEST
+  # ============================================================================
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore PoOmad.sln
+
+      - name: Build solution
+        run: dotnet build PoOmad.sln --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test tests/PoOmad.Api.Tests/PoOmad.Api.Tests/PoOmad.Api.Tests.csproj --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+
+      - name: Run client tests
+        run: dotnet test tests/PoOmad.Client.Tests/PoOmad.Client.Tests/PoOmad.Client.Tests.csproj --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+
+      - name: Publish application
+        run: dotnet publish src/PoOmad.Api/PoOmad.Api/PoOmad.Api.csproj --configuration Release --output ./publish
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+  # ============================================================================
+  # E2E TESTS (on PR only)
+  # ============================================================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+      - name: Install Playwright
+        working-directory: tests/PoOmad.E2E.Tests
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start application
+        run: |
+          cd ./publish
+          dotnet PoOmad.Api.dll &
+          sleep 10
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://localhost:5000
+
+      - name: Run E2E tests
+        working-directory: tests/PoOmad.E2E.Tests
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:5000
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: tests/PoOmad.E2E.Tests/playwright-report
+
+  # ============================================================================
+  # INFRASTRUCTURE (on main branch only)
+  # ============================================================================
+  infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Bicep
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: >
+            environment=prod
+            budgetAlertEmail=${{ secrets.BUDGET_ALERT_EMAIL }}
+            googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
+            googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+  # ============================================================================
+  # DEPLOY APPLICATION (on main branch only)
+  # ============================================================================
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [build, infrastructure]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: ./publish
+
+      - name: Health check
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health)
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check passed!"
+          else
+            echo "❌ Health check failed with status: $response"
+            exit 1
+          fi

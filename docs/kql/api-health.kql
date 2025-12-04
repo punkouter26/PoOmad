@@ -1,0 +1,75 @@
+// PoOmad API Health Monitoring Queries
+// Use these in Azure Application Insights → Logs
+
+// ==============================================================================
+// HEALTH CHECK ENDPOINT STATUS
+// Monitor /api/health endpoint availability
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name contains "/api/health"
+| summarize 
+    TotalRequests = count(),
+    SuccessCount = countif(success == true),
+    FailureCount = countif(success == false),
+    SuccessRate = round(100.0 * countif(success == true) / count(), 2)
+    by bin(timestamp, 5m)
+| order by timestamp desc
+
+// ==============================================================================
+// API AVAILABILITY BY ENDPOINT
+// Track success rate per endpoint over time
+// ==============================================================================
+requests
+| where timestamp > ago(24h)
+| where name startswith "/api/"
+| summarize 
+    Requests = count(),
+    SuccessRate = round(100.0 * countif(success == true) / count(), 2),
+    AvgDuration = avg(duration)
+    by name
+| order by Requests desc
+
+// ==============================================================================
+// HEALTH CHECK FAILURES WITH DETAILS
+// Alert-worthy: any health check failures
+// ==============================================================================
+requests
+| where timestamp > ago(1h)
+| where name contains "/api/health"
+| where success == false
+| project 
+    timestamp,
+    resultCode,
+    duration,
+    cloud_RoleInstance,
+    customDimensions
+| order by timestamp desc
+
+// ==============================================================================
+// API UPTIME SUMMARY (Last 7 days)
+// ==============================================================================
+requests
+| where timestamp > ago(7d)
+| where name startswith "/api/"
+| summarize 
+    TotalRequests = count(),
+    Successful = countif(success == true),
+    Failed = countif(success == false),
+    UptimePercent = round(100.0 * countif(success == true) / count(), 4)
+| extend Status = iff(UptimePercent >= 99.9, "Healthy ✅", 
+                  iff(UptimePercent >= 99.0, "Warning ⚠️", "Critical 🚨"))
+
+// ==============================================================================
+// DEPENDENCY HEALTH (Table Storage, etc.)
+// ==============================================================================
+dependencies
+| where timestamp > ago(24h)
+| where type == "Azure table" or target contains "table.core.windows.net"
+| summarize 
+    Calls = count(),
+    SuccessRate = round(100.0 * countif(success == true) / count(), 2),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95)
+    by bin(timestamp, 15m)
+| order by timestamp desc
